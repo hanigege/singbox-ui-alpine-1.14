@@ -2382,7 +2382,7 @@ function renderNodes() {
     const isRuntime = runtimeProxy.now === outbound.tag;
     const isAutoRuntime = runtimeProxy.now === "Auto" && autoDisplayTag() === outbound.tag;
     const card = document.createElement("div");
-    card.className = `node-card ${editingNodeTag === outbound.tag ? "selected" : ""} ${isDefault ? "default" : ""} ${isAutoRuntime ? "runtime" : ""} ${!isEnabled ? "disabled" : ""}`;
+    card.className = `node-card proto-${outbound.type} ${editingNodeTag === outbound.tag ? "selected" : ""} ${isDefault ? "default" : ""} ${isAutoRuntime ? "runtime" : ""} ${!isEnabled ? "disabled" : ""}`;
     card.addEventListener("click", () => selectNode(outbound.tag));
     const title = document.createElement("div");
     title.className = "node-title";
