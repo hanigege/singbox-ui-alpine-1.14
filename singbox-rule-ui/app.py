@@ -1539,9 +1539,8 @@ def local_dns_server_config(choice, groups_dns=None):
         server = json.loads(json.dumps(LOCAL_DNS_SERVER))
         server["server"] = item["server"]
         server["server_port"] = item["server_port"]
-    ecs = normalize_ecs_subnet(groups_dns.get("local_ecs_subnet", "")) if groups_dns else ""
-    if ecs:
-        server["client_subnet"] = ecs
+    # sing-box 1.14 新版 DNS server 不接受 client_subnet 字段（decode 直接报 unknown field），
+    # ECS 统一由 apply_ecs_to_china_dns_rules() 注入国内域名 DNS 规则的 route action。
     return server
 
 
