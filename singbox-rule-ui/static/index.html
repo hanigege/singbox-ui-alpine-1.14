@@ -137,14 +137,23 @@
             <div>
               <h3 data-i18n="localDnsTitle">Local DNS</h3>
             </div>
-            <label>
+            <label class="wide-field">
               <span data-i18n="localDnsEcsSubnet">ECS Client Subnet (optional)</span>
-              <input type="text" id="localDnsEcsSubnet" placeholder="118.184.0.0/15" autocomplete="off" />
-              <p class="setting-note" data-i18n="localDnsEcsNote">
-                Attach an EDNS Client Subnet to domestic DNS queries. Authoritative DNS returns CDN IPs closest to this subnet.
-                Leave blank to disable ECS (upstream DNS uses your egress IP automatically).
-                Example: "118.184.0.0/15" for Xuzhou Telecom. Do not use your real IP for privacy.
-              </p>
+              <input type="text" id="localDnsEcsSubnet" placeholder="203.0.113.0/24" autocomplete="off" />
+              <span class="ecs-note">
+                <span class="ecs-line">
+                  <strong class="ecs-tag ecs-tag-leave" data-i18n="ecsTagLeave">Leave blank (recommended default)</strong>
+                  <span class="ecs-text" data-i18n="ecsTextLeave">On a home/office broadband network with direct domestic DNS queries, the upstream already geo-resolves by your egress IP — nothing to fill in.</span>
+                </span>
+                <span class="ecs-line">
+                  <strong class="ecs-tag ecs-tag-fill" data-i18n="ecsTagFill">Fill in only if</strong>
+                  <span class="ecs-text" data-i18n="ecsTextFill">domestic DNS queries go through a proxy, a foreign/off-site DNS resolves domestic domains, or this host runs in a datacenter/cloud — the upstream cannot see your real subnet and CDN affinity drifts; then enter your home broadband egress /24.</span>
+                </span>
+                <span class="ecs-line">
+                  <strong class="ecs-tag" data-i18n="ecsTagFormat">Format</strong>
+                  <span class="ecs-text" data-i18n="ecsTextFormat">/24 recommended for IPv4 (example: 203.0.113.0/24), never a single IP; an 'IP/24' with host bits is auto-normalized. Do NOT use your real IP for privacy.</span>
+                </span>
+              </span>
             </label>
             <label>
               <span data-i18n="localDnsUpstream">Upstream</span>
@@ -331,6 +340,6 @@
         </section>
       </section>
     </main>
-    <script src="/app.js?v=20260901-brutalnote"></script>
+    <script src="/app.js?v=20260906-ecsui"></script>
   </body>
 </html>
