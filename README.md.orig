@@ -1,8 +1,4 @@
-# sing-box-alpine-ui（官方 sing-box 版）— v1.14 迭代分支
-
-> **本仓库是 `singbox-ui-alpine` 的 1.14 适配分支。** 现有仓库（`hanigege/singbox-ui-alpine`）冻结，所有适配 sing-box 1.14 的修改在此进行。当前基线：v1.13.18。
-
----
+# sing-box-alpine-ui（官方 sing-box 版）
 
 ## 功能
 

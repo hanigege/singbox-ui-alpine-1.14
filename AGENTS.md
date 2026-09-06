@@ -1,5 +1,7 @@
 # 维护约束
 
+**本仓库是 `singbox-ui-alpine` 的 1.14 迭代分支仓库。** 现有仓库（`hanigege/singbox-ui-alpine`）冻结，所有适配 sing-box 1.14 的修改在此进行。当前二进制仍为 v1.13.18，升级时替换。
+
 本仓库是 Alpine/OpenRC 环境下的 sing-box 网关和 Rule UI。任何代码修改都必须以生产系统维护标准处理，稳定性优先于功能速度。
 
 ## 第一原则
