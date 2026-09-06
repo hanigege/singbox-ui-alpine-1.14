@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SING_BOX_BUNDLED_VERSION="${SING_BOX_BUNDLED_VERSION:-1.13.18}"
+SING_BOX_BUNDLED_VERSION="${SING_BOX_BUNDLED_VERSION:-1.14.0}"
 SING_BOX_ARCH="${SING_BOX_ARCH:-auto}"
 INSTALL_DIR="/opt/singbox-rule-ui"
 CONFIG_DIR="/etc/sing-box"
