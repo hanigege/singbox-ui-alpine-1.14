@@ -1,0 +1,24 @@
+#!/sbin/openrc-run
+
+name="singbox-rule-ui"
+description="Sing-box custom rule web UI"
+command="/usr/bin/python3"
+command_args="/opt/singbox-rule-ui/app.py"
+command_background="yes"
+directory="/opt/singbox-rule-ui"
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="/var/log/sing-box-gateway/rule-ui.log"
+error_log="/var/log/sing-box-gateway/rule-ui.log"
+
+export RULE_UI_HOST="${RULE_UI_HOST:-0.0.0.0}"
+export RULE_UI_PORT="${RULE_UI_PORT:-9091}"
+
+depend() {
+  need net
+  use sing-box
+  after sing-box
+}
+
+start_pre() {
+  checkpath -d -m 0755 /var/log/sing-box-gateway
+}

@@ -1,0 +1,30 @@
+#!/sbin/openrc-run
+
+name="sing-box-tproxy"
+description="sing-box TProxy policy routing and nftables rules"
+command="/bin/sleep"
+command_args="2147483647"
+command_background="yes"
+pidfile="/run/${RC_SVCNAME}.pid"
+
+depend() {
+  need net
+  before sing-box
+}
+
+start_pre() {
+  # IPv6 前缀和默认网卡可能变化；每次应用 nft 前都重新生成脚本。
+  /usr/local/sbin/refresh-sing-box-tproxy-setup || return 1
+  /usr/local/sbin/sing-box-tproxy-setup || return 1
+}
+
+stop_post() {
+  ebegin "Clearing sing-box TProxy runtime rules"
+  nft delete table inet singbox_tproxy >/dev/null 2>&1 || true
+  nft delete table inet singbox >/dev/null 2>&1 || true
+  ip rule del fwmark 1 table 100 >/dev/null 2>&1 || true
+  ip -6 rule del fwmark 1 table 100 >/dev/null 2>&1 || true
+  ip route flush table 100 >/dev/null 2>&1 || true
+  ip -6 route flush table 100 >/dev/null 2>&1 || true
+  eend 0
+}

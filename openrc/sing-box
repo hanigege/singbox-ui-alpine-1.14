@@ -1,0 +1,30 @@
+#!/sbin/openrc-run
+
+name="sing-box"
+description="sing-box gateway service"
+command="/usr/local/bin/sing-box"
+command_args="run -c /etc/sing-box/config.json"
+command_background="yes"
+pidfile="/run/${RC_SVCNAME}.pid"
+output_log="/var/log/sing-box-gateway/sing-box.log"
+error_log="/var/log/sing-box-gateway/sing-box.log"
+retry="TERM/10/KILL/5"
+
+depend() {
+  need net
+  use sing-box-tproxy
+  after firewall
+  after sing-box-tproxy
+}
+
+start_pre() {
+  checkpath -d -m 0755 /var/log/sing-box-gateway
+  # Alpine/OpenRC 没有 systemd ExecStartPre；启动前刷新运行配置，避免 IP/网卡变化后沿用旧监听地址。
+  # refresh 失败不能阻断启动：开机时 WAN 未就绪(拿不到默认路由)、UI 状态文件损坏等
+  # 都可能让渲染失败，但磁盘上的 config.json 往往仍然可用。"sing-box 不死"优先——
+  # 刷新失败仅告警，最终以现有 config.json 的 sing-box check 结果决定能否启动。
+  if ! /usr/local/sbin/refresh-sing-box-runtime-config; then
+    ewarn "refresh-sing-box-runtime-config failed; starting with existing config.json"
+  fi
+  /usr/local/bin/sing-box check -c /etc/sing-box/config.json || return 1
+}
