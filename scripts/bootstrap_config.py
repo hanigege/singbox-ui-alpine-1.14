@@ -186,6 +186,9 @@ def base_config(lan_ip, ui_secret, fake4, fake6, ipv6_dns_listen):
                     "server": "119.29.29.29",
                     "server_port": 53,
                     # 国内直连域名优先使用 DNSPod UDP，当前 sing-box 版本没有 DNS 上游并发/自动备用组；223.5.5.5 只作为手动回退参考，不能伪装成自动备份。
+                    # ECS (EDNS Client Subnet)：默认不启用。用户可在 UI 维护页填写公网网段，
+                    # 让国内权威 DNS 按该网段返回就近 CDN IP（如 "118.184.0.0/15" 代表徐州电信）。
+                    # 留空 = 不附加 ECS，上游 DNS 按出口 IP 自动判断，适合出口 IP 稳定的家庭宽带。
                 },
                 {
                     "tag": "ddns-remote-dns",
@@ -200,6 +203,9 @@ def base_config(lan_ip, ui_secret, fake4, fake6, ipv6_dns_listen):
             "rules": [
                 {"rule_set": "custom-blacklist", "action": "reject"},
                 # 白名单既然要直连，DNS 也必须返回真实地址；否则 LAN 兜底 FakeIP 会让 IPv6 外测继续进入代理链路。
+                # ECS 说明：sing-box 1.14 的 client_subnet 只能在 DNS rule action 或 DNS 顶层配置，
+                # 不能放在 DNS server 上。国内域名通过 route action 的 client_subnet 附加 ECS，
+                # 国外域名走 fakeip/remote-dns 不受影响。用户可在 UI 维护页配置 ECS 网段。
                 {"rule_set": "custom-whitelist", "action": "route", "server": "local-dns", "rewrite_ttl": 60},
                 {"rule_set": "custom-greylist", "action": "route", "server": "fakeip-dns", "rewrite_ttl": 60, "query_type": ["A", "AAAA"]},
                 {"rule_set": "custom-ddns", "action": "route", "server": "local-dns", "rewrite_ttl": 60},
@@ -211,6 +217,10 @@ def base_config(lan_ip, ui_secret, fake4, fake6, ipv6_dns_listen):
                 {"inbound": dns_inbounds, "domain_suffix": ["local"], "domain_regex": [r"^[^.]+$", r"^_(ldap|gc)\._tcp\..+"], "action": "reject"},
                 {"rule_set": ["geosite-cn", "geosite-geolocation-cn", "geosite-icloud@cn", "geosite-apple@cn"], "action": "route", "server": "local-dns", "rewrite_ttl": 60},
                 {"rule_set": ["geosite-geolocation-!cn"], "action": "route", "server": "remote-dns", "rewrite_ttl": 60},
+                # ECS 说明：sing-box 1.14 的 client_subnet 只能在 DNS rule action 或 DNS 顶层配置，
+                # 不能放在 DNS server 上。国内域名通过 route action 的 client_subnet 附加 ECS，
+                # 国外域名走 fakeip/remote-dns 不受影响。用户可在 UI 维护页配置 ECS 网段。
+                # 由 render_config / refresh 链路在运行时注入实际值。
             ],
         },
         "inbounds": inbounds,

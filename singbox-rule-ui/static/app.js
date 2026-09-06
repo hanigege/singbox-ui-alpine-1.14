@@ -252,6 +252,8 @@ const translations = {
     localDnsTitle: "China DNS",
     localDnsNote: "Choose one local-dns upstream. sing-box does not run these in parallel.",
     localDnsUpstream: "Upstream",
+    localDnsEcsSubnet: "ECS Client Subnet (optional)",
+    localDnsEcsNote: "Attach an EDNS Client Subnet to domestic DNS queries. Authoritative DNS returns CDN IPs closest to this subnet. Leave blank to disable ECS (upstream DNS uses your egress IP automatically). Example: '118.184.0.0/15' for Xuzhou Telecom. Do not use your real IP for privacy.",
     customDnsServer: "Custom Server",
     customDnsPort: "Custom Port",
     refreshDnsDelay: "Refresh DNS delay",
@@ -589,6 +591,8 @@ const translations = {
     localDnsTitle: "国内 DNS",
     localDnsNote: "为国内直连域名选择一个 local-dns 上游；sing-box 不会并发查询这些 DNS。",
     localDnsUpstream: "上游",
+    localDnsEcsSubnet: "ECS Client Subnet（可选）",
+    localDnsEcsNote: "为国内 DNS 查询附加 EDNS Client Subnet，权威 DNS 按该网段返回就近 CDN IP。留空 = 不启用 ECS（上游 DNS 按出口 IP 自动判断，适合出口 IP 稳定的家庭宽带）。示例：「118.184.0.0/15」代表徐州电信。请勿填写真实 IP 以保护隐私。",
     customDnsServer: "自定义服务器",
     customDnsPort: "自定义端口",
     refreshDnsDelay: "刷新 DNS 延时",
@@ -2217,6 +2221,10 @@ function renderLocalDnsSettings() {
     select.appendChild(option);
   }
   select.value = current;
+  const ecsInput = $("localDnsEcsSubnet");
+  if (ecsInput) {
+    ecsInput.value = (state.groups.dns || {}).local_ecs_subnet || "";
+  }
   const rows = $("dnsDelayRows");
   rows.innerHTML = "";
   const choices = Object.entries(dnsChoices());
@@ -3120,6 +3128,8 @@ function syncNodeSettingsFromForm() {
   state.groups.dns.local = $("localDnsSelect").value || "alidns";
   state.groups.dns.local_custom_server = ($("customDnsServer").value || "223.5.5.5").trim();
   state.groups.dns.local_custom_port = Number($("customDnsPort").value) || 53;
+  const ecsInput = $("localDnsEcsSubnet");
+  state.groups.dns.local_ecs_subnet = ecsInput ? (ecsInput.value || "").trim() : "";
   state.groups.fakeip = state.groups.fakeip || {};
   state.groups.fakeip.inet4_range = $("fakeipV4").value.trim();
   state.groups.fakeip.inet6_range = $("fakeipV6").value.trim();
@@ -3179,6 +3189,11 @@ $("customDnsServer").addEventListener("input", syncNodeSettingsChanged);
 $("customDnsServer").addEventListener("change", syncNodeSettingsChanged);
 $("customDnsPort").addEventListener("input", syncNodeSettingsChanged);
 $("customDnsPort").addEventListener("change", syncNodeSettingsChanged);
+const localDnsEcsSubnetEl = $("localDnsEcsSubnet");
+if (localDnsEcsSubnetEl) {
+  localDnsEcsSubnetEl.addEventListener("input", syncNodeSettingsChanged);
+  localDnsEcsSubnetEl.addEventListener("change", syncNodeSettingsChanged);
+}
 $("refreshDnsDelayBtn").addEventListener("click", refreshDnsDelays);
 $("proxyDefault").addEventListener("change", () => {
   syncNodeSettingsChanged();

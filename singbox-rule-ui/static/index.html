@@ -138,6 +138,15 @@
               <h3 data-i18n="localDnsTitle">Local DNS</h3>
             </div>
             <label>
+              <span data-i18n="localDnsEcsSubnet">ECS Client Subnet (optional)</span>
+              <input type="text" id="localDnsEcsSubnet" placeholder="118.184.0.0/15" autocomplete="off" />
+              <p class="setting-note" data-i18n="localDnsEcsNote">
+                Attach an EDNS Client Subnet to domestic DNS queries. Authoritative DNS returns CDN IPs closest to this subnet.
+                Leave blank to disable ECS (upstream DNS uses your egress IP automatically).
+                Example: "118.184.0.0/15" for Xuzhou Telecom. Do not use your real IP for privacy.
+              </p>
+            </label>
+            <label>
               <span data-i18n="localDnsUpstream">Upstream</span>
               <select id="localDnsSelect"></select>
             </label>
