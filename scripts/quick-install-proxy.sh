@@ -8,7 +8,7 @@ set -eu
 # 调用行缺失，sh 会报语法错/什么都不执行，而不是执行半截安装。
 # 防线二：README 推荐先落盘再执行的两步式命令，让 curl 的非零退出码可见。
 main() {
-REPO="${SING_BOX_GATEWAY_REPO:-hanigege/singbox-ui-alpine}"
+REPO="${SING_BOX_GATEWAY_REPO:-hanigege/singbox-ui-alpine-1.14}"
 REF="${SING_BOX_GATEWAY_REF:-main}"
 ACTION="${1:-install}"
 PROXY_PREFIX="${SING_BOX_GATEWAY_PROXY_PREFIX:-https://gh-proxy.com/}"
@@ -68,7 +68,7 @@ download_urls() {
   printf "%s\n" "$url"
 }
 
-echo "正在下载 singbox-ui-alpine ${REPO}@${REF}..."
+echo "正在下载 ${REPO}@${REF}..."
 archive_url="https://github.com/${REPO}/archive/refs/heads/${REF}.tar.gz"
 urls_file="$tmp/urls"
 download_urls "$archive_url" > "$urls_file"
