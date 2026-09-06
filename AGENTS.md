@@ -1,6 +1,6 @@
 # 维护约束
 
-**本仓库是 `singbox-ui-alpine` 的 1.14 迭代分支仓库。** 现有仓库（`hanigege/singbox-ui-alpine`）冻结，所有适配 sing-box 1.14 的修改在此进行。当前二进制仍为 v1.13.18，升级时替换。
+**本仓库是 `singbox-ui-alpine` 的 1.14 迭代分支仓库。** 现有仓库（`hanigege/singbox-ui-alpine`）冻结，所有适配 sing-box 1.14 的修改在此进行。当前二进制为 v1.14.0（`third_party/sing-box/v1.14.0/`）。
 
 本仓库是 Alpine/OpenRC 环境下的 sing-box 网关和 Rule UI。任何代码修改都必须以生产系统维护标准处理，稳定性优先于功能速度。
 
@@ -96,6 +96,6 @@ sh -n \
 
 | 仓库 | 本地路径 | 说明 |
 |------|---------|------|
-| `hanigege/singbox-ui-alpine` | `~/codex/sb-alpine` | 当前唯一维护仓库（sb-alpine）。Alpine OpenRC 环境，官方 sing-box 网关 + Rule UI。生产部署在 10.20.20.6 和 10.20.20.16。 |
+| `hanigege/singbox-ui-alpine-1.14` |  | 当前维护仓库（1.14 迭代分支）。Alpine OpenRC 环境，官方 sing-box 1.14 网关 + Rule UI。生产部署在 10.20.20.6 和 10.20.20.16。原 `hanigege/singbox-ui-alpine` 已冻结。 |
 
 `sing-box1.14x-gateway-ui` 与 `sing-box1.13.13-gateway-ui` 两个仓库已于 2026-08 删除，不再维护，前端改动无需再同步。

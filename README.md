@@ -7,7 +7,7 @@
 ## 功能
 
 - 一键安装 `sing-box` 二进制、OpenRC 服务、TProxy、crond 定时任务和 Web UI
-- 默认使用仓库内置并校验过的官方 `sing-box v1.14.0` 静态二进制（自动检测 `amd64` / `arm64`）
+- 默认使用仓库内置并校验过的官方 `sing-box v1.14.0` 二进制（自动检测 `amd64` / `arm64`）
 - 9091 规则 UI 管理白名单、黑名单、灰名单、DDNS、代理节点、实时连接、日志和运行规则
 - 保存前执行 `sing-box check`，失败不覆盖正式配置；规则和主配置使用原子替换
 - 重启失败自动回滚上一份可用配置，优先保证正在运行的 `sing-box` 可恢复
@@ -30,16 +30,16 @@
 - Alpine 3.19+
 - `x86_64/amd64` / `aarch64/arm64`（安装器按 `uname -m` 自动选择）
 
-需要 root 权限。不要在 Debian/Ubuntu 上使用这个仓库；Debian/Ubuntu 请继续用原 systemd 版本。
+需要 root 权限。不要在 Debian/Ubuntu 上使用这个仓库（本仓库只面向 Alpine + OpenRC）。
 
-## 官方版 一键安装 {官方 sing-box v1.14.0}
+## 官方版一键安装（官方 sing-box v1.14.0）
 
 提供两个并行的安装入口，按网络环境选一个即可。两个入口走不同的安装脚本，最终效果一致：
 
 ```sh
 # 入口一：直连 GitHub（推荐，海外或能直连 GitHub raw 的机器）
 # 脚本内部所有下载也保持直连，无任何反代层。
-curl -fsSL https://raw.githubusercontent.com/hanigege/singbox-ui-alpine/main/scripts/quick-install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/hanigege/singbox-ui-alpine-1.14/main/scripts/quick-install.sh | sh
 ```
 
 > ⚠️ **网络不稳的机器请用下面的两步式命令**。`curl ... | sh` 有个固有缺陷：curl
@@ -48,7 +48,7 @@ curl -fsSL https://raw.githubusercontent.com/hanigege/singbox-ui-alpine/main/scr
 > 能让失败真正暴露出来（`&&` 会在下载失败时直接中止）：
 >
 > ```sh
-> curl -fsSL -o /tmp/sb-install.sh https://raw.githubusercontent.com/hanigege/singbox-ui-alpine/main/scripts/quick-install.sh \
+> curl -fsSL -o /tmp/sb-install.sh https://raw.githubusercontent.com/hanigege/singbox-ui-alpine-1.14/main/scripts/quick-install.sh \
 >   && sh /tmp/sb-install.sh
 > ```
 
@@ -56,7 +56,7 @@ curl -fsSL https://raw.githubusercontent.com/hanigege/singbox-ui-alpine/main/scr
 # 入口二：gh-proxy.com 反代（境内或 GitHub 直连不稳定的机器）
 # 脚本内置 gh-proxy.com、ghproxy.net 多级镜像加速
 # 和直连回退（压缩包下载和分流规则更新均有多镜像兜底）。
-curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/hanigege/singbox-ui-alpine/main/scripts/quick-install-proxy.sh | sh
+curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/hanigege/singbox-ui-alpine-1.14/main/scripts/quick-install-proxy.sh | sh
 ```
 
 ### 自定义 UI 登录密码（可选）
@@ -65,17 +65,17 @@ curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/hanigege/singb
 
 ```sh
 # 直连入口 + 自定义密码（把 mypass6 换成你自己的密码）
-curl -fsSL https://raw.githubusercontent.com/hanigege/singbox-ui-alpine/main/scripts/quick-install.sh | RULE_UI_TOKEN=mypass6 sh
+curl -fsSL https://raw.githubusercontent.com/hanigege/singbox-ui-alpine-1.14/main/scripts/quick-install.sh | RULE_UI_TOKEN=mypass6 sh
 ```
 
 ```sh
 # 反代入口 + 自定义密码
-curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/hanigege/singbox-ui-alpine/main/scripts/quick-install-proxy.sh | RULE_UI_TOKEN=mypass6 sh
+curl -fsSL https://gh-proxy.com/https://raw.githubusercontent.com/hanigege/singbox-ui-alpine-1.14/main/scripts/quick-install-proxy.sh | RULE_UI_TOKEN=mypass6 sh
 ```
 
 密码不合规（少于 6 位或含空格）时自动回退为随机 token 并打印告警。已装好的机器不需要重装：直接登录 9091 → 维护页 → 「修改访问密码」即可随时更换；覆盖安装永远不会重置现有密码。
 
-安装器自动安装 Alpine 依赖：`bash`、`curl`、`ca-certificates`、`tar`、`gzip`、`python3`、`nftables`、`iproute2`、`rsync`、`util-linux`、`coreutils`、`openrc`。仓库内置的 `sing-box` 是官方版 `v1.14.0` 静态二进制（amd64/arm64 双架构，安装器自动检测），不再需要 `gcompat`。卸载时默认保留 apk 包，避免连带移除系统基础依赖。
+安装器自动安装 Alpine 依赖：`bash`、`curl`、`ca-certificates`、`tar`、`gzip`、`python3`、`nftables`、`iproute2`、`rsync`、`util-linux`、`coreutils`、`openrc`。仓库内置的 `sing-box` 是官方版 `v1.14.0` 二进制（amd64/arm64 双架构，安装器自动检测）；官方二进制按 glibc 动态链接发布，在 Alpine 上由 `gcompat` 兼容层运行（安装器已自动安装）。卸载时默认保留 apk 包，避免连带移除系统基础依赖。
 
 如果安装在 Proxmox VE 的 Alpine LXC 里，一键安装只负责容器内的 sing-box、TProxy、OpenRC 和 Rule UI，不会改 PVE 宿主机配置，也不能替你写 `/etc/pve/lxc/<CTID>.conf`。高并发或高带宽场景建议安装后继续看下面的“Proxmox VE / LXC 可选优化”。
 
@@ -367,8 +367,8 @@ SING_BOX_GATEWAY_REMOVE_DEPS=1 /usr/local/bin/sing-box-gateway-uninstall --yes
 
 ```bash
 apk add --no-cache bash curl ca-certificates
-git clone https://github.com/hanigege/singbox-ui-alpine.git
-cd singbox-ui-alpine
+git clone https://github.com/hanigege/singbox-ui-alpine-1.14.git
+cd singbox-ui-alpine-1.14
 bash scripts/install.sh
 ```
 
