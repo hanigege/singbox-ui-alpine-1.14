@@ -2007,3 +2007,39 @@ input[type="checkbox"] { accent-color: #34c759; }
 @media (prefers-reduced-motion: reduce) {
   .memory-pulse { animation: none !important; }
 }
+
+/* ===== 操作按钮反馈状态（setActionButton 的 working/done/failed） =====
+   pulseActionButton/finishActionButton 一直会切换这三个类，
+   但样式此前从未落地：按钮点击后除状态栏一行小字外没有任何可见反馈，
+   逐节点测速又要阻塞 10-30 秒，用户会以为点击无效。 */
+button.working {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  animation: action-pulse 1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+button.done {
+  color: #248a3d;
+  border-color: rgba(52, 199, 89, 0.55);
+  background: var(--ok-soft);
+}
+
+button.failed {
+  color: #d70015;
+  border-color: rgba(255, 59, 48, 0.55);
+  background: var(--danger-soft);
+}
+
+@keyframes action-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.working {
+    animation: none;
+    opacity: 0.7;
+  }
+}

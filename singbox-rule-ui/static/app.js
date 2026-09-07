@@ -2624,13 +2624,18 @@ async function refreshDelays() {
   if (delayRefreshInFlight) return;
   delayRefreshInFlight = true;
   setBusy(true);
+  // 逐节点测速串行跑 10-30 秒，按钮必须有自有的 working 动画，
+  // 否则除状态栏一行小字外没有任何可见反馈，用户会以为点击无效。
+  pulseActionButton("refreshDelayBtn", "refreshDelay");
   setStatus(t("testingDelay"));
   try {
     await loadProxyInfo(true);
     await loadProxyInfo(false);
     render();
+    finishActionButton("refreshDelayBtn", "actionDone", "done", "refreshDelay");
     setStatus(t("delayUpdated"), "ok");
   } catch (error) {
+    finishActionButton("refreshDelayBtn", "actionFailed", "failed", "refreshDelay");
     setStatus(error.message, "bad");
   } finally {
     delayRefreshInFlight = false;
