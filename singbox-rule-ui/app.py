@@ -67,8 +67,16 @@ LOCAL_DNS_SERVER = {
     "server": "119.29.29.29",
     "server_port": 53,
     # 国内直连域名只会路由到一个 local-dns；当前 sing-box 没有 DNS 并发/备用组，UI 只能明确选择单个上游。
-    # ECS (EDNS Client Subnet)：由 groups["dns"]["local_ecs_subnet"] 控制，
-    # 非空时附加 client_subnet 让国内权威 DNS 返回就近 CDN IP。
+    # ECS (EDNS Client Subnet)：不能用在本结构上。sing-box 的 DNS server 不接受 client_subnet
+    # （1.13/1.14 都会 FATAL unknown field），只能挂在 DNS rule 的 action 上，
+    # 由 apply_ecs_to_china_dns_rules() 注入到国内域名规则里。
+}
+# DNS 规则里代表“国内直连、走真实 DNS”的规则集，ECS 注入与回读都以这份清单为准。
+CHINA_DNS_RULE_SETS = {
+    "geosite-cn",
+    "geosite-geolocation-cn",
+    "geosite-icloud@cn",
+    "geosite-apple@cn",
 }
 DDNS_REMOTE_DNS_SERVER = {
     "tag": "ddns-remote-dns",
@@ -860,7 +868,16 @@ def extract_initial_manager_data(config):
                 local_dns_choice = LOCAL_DNS_BY_SERVER[server_addr]
             else:
                 local_dns_choice = "custom_dns"
-            local_ecs_subnet = str(server.get("client_subnet", "") or "").strip()
+            break
+    # ECS 只存在于 DNS rule 的 action 上；旧的错误写法写进 DNS server 的 client_subnet 会被
+    # sing-box 拒绝（FATAL unknown field），这里一概不读，避免把坏值回填进 UI 再次渲染失败。
+    for rule in config.get("dns", {}).get("rules", []) or []:
+        if not isinstance(rule, dict) or not rule.get("client_subnet"):
+            continue
+        rule_set = rule.get("rule_set")
+        rule_set_tags = [rule_set] if isinstance(rule_set, str) else (rule_set or [])
+        if any(tag in CHINA_DNS_RULE_SETS for tag in rule_set_tags):
+            local_ecs_subnet = str(rule.get("client_subnet") or "").strip()
             break
     base = json.loads(json.dumps(config))
     base["outbounds"] = []
@@ -1539,8 +1556,9 @@ def local_dns_server_config(choice, groups_dns=None):
         server = json.loads(json.dumps(LOCAL_DNS_SERVER))
         server["server"] = item["server"]
         server["server_port"] = item["server_port"]
-    # sing-box 1.14 新版 DNS server 不接受 client_subnet 字段（decode 直接报 unknown field），
-    # ECS 统一由 apply_ecs_to_china_dns_rules() 注入国内域名 DNS 规则的 route action。
+    # sing-box 的 DNS server 不接受 client_subnet（1.13/1.14 均 FATAL unknown field），
+    # 写进去会让 staged_check 拒绝保存。ECS 统一由 apply_ecs_to_china_dns_rules()
+    # 注入国内域名 DNS 规则的 route action。
     return server
 
 
@@ -1565,32 +1583,27 @@ def apply_local_dns_settings(config, groups):
 def apply_ecs_to_china_dns_rules(config, groups):
     """给国内域名 DNS 规则的 route action 注入 client_subnet（ECS）。
 
-    sing-box 1.14 的 client_subnet 只能在 DNS rule action 或 DNS 顶层配置，
-    不能放在 DNS server 上。因此把 ECS 附加到国内域名的 route action 里，
+    sing-box 只接受 DNS rule action 上的 client_subnet，DNS server 上放会 FATAL
+    unknown field（1.13/1.14 一致）。因此把 ECS 附加到国内域名的 route action 里，
     让权威 DNS 按该网段返回就近 CDN IP；国外域名走 fakeip/remote-dns 不受影响。
 
     用户通过 UI 维护页的 groups["dns"]["local_ecs_subnet"] 配置网段，
     空字符串表示不启用 ECS（上游 DNS 按出口 IP 自动判断）。
     """
     ecs = normalize_ecs_subnet(groups.get("dns", {}).get("local_ecs_subnet", ""))
-    if not ecs:
-        return
     dns_rules = config.setdefault("dns", {}).setdefault("rules", [])
-    china_rule_sets = {
-        "geosite-cn",
-        "geosite-geolocation-cn",
-        "geosite-icloud@cn",
-        "geosite-apple@cn",
-    }
     for rule in dns_rules:
         if not isinstance(rule, dict) or rule.get("action") != "route":
             continue
         rule_set = rule.get("rule_set")
-        # 匹配单条 rule_set 或 rule_set 列表中包含国内规则集
-        if isinstance(rule_set, str) and rule_set in china_rule_sets:
+        rule_set_tags = [rule_set] if isinstance(rule_set, str) else (rule_set or [])
+        if not any(tag in CHINA_DNS_RULE_SETS for tag in rule_set_tags):
+            continue
+        # 幂等：用户清空 ECS 时也要摘掉历史注入值，避免 base.json 里残留一个旧网段。
+        if ecs:
             rule["client_subnet"] = ecs
-        elif isinstance(rule_set, list) and any(item in china_rule_sets for item in rule_set):
-            rule["client_subnet"] = ecs
+        else:
+            rule.pop("client_subnet", None)
 
 
 def apply_ddns_remote_dns_settings(config):
