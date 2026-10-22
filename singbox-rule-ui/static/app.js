@@ -252,13 +252,6 @@ const translations = {
     localDnsTitle: "China DNS",
     localDnsNote: "Choose one local-dns upstream. sing-box does not run these in parallel.",
     localDnsUpstream: "Upstream",
-    localDnsEcsSubnet: "ECS Client Subnet (optional)",
-    ecsTagLeave: "Leave blank (recommended default)",
-    ecsTextLeave: "On a home/office broadband network with direct domestic DNS queries, the upstream already geo-resolves by your egress IP — nothing to fill in.",
-    ecsTagFill: "Fill in only if",
-    ecsTextFill: "domestic DNS queries go through a proxy, a foreign/off-site DNS resolves domestic domains, or this host runs in a datacenter/cloud — the upstream cannot see your real subnet and CDN affinity drifts; then enter your home broadband egress /24.",
-    ecsTagFormat: "Format",
-    ecsTextFormat: "/24 recommended for IPv4 (example: 203.0.113.0/24), never a single IP; an 'IP/24' with host bits is auto-normalized. Do NOT use your real IP for privacy.",
     customDnsServer: "Custom Server",
     customDnsPort: "Custom Port",
     refreshDnsDelay: "Refresh DNS delay",
@@ -596,13 +589,6 @@ const translations = {
     localDnsTitle: "国内 DNS",
     localDnsNote: "为国内直连域名选择一个 local-dns 上游；sing-box 不会并发查询这些 DNS。",
     localDnsUpstream: "上游",
-    localDnsEcsSubnet: "ECS Client Subnet（可选）",
-    ecsTagLeave: "何时留空（推荐默认）",
-    ecsTextLeave: "本机处于家庭/办公宽带环境、国内 DNS 直连查询——上游已按出口 IP 自动就近解析，无需填写。",
-    ecsTagFill: "何时需要填写",
-    ecsTextFill: "国内 DNS 走代理查询、用境外/异地 DNS 解析国内域名、或本机部署在机房/云服务器——此时上游看不到你的真实网段，CDN 就近会跑偏，应填入家宽出口 IP 所在网段。",
-    ecsTagFormat: "填法",
-    ecsTextFormat: "IPv4 建议 /24（示例：203.0.113.0/24），不能填单 IP，带主机位的「IP/24」会自动归一化为网段；请勿填写真实 IP 以保护隐私。",
     customDnsServer: "自定义服务器",
     customDnsPort: "自定义端口",
     refreshDnsDelay: "刷新 DNS 延时",
@@ -2231,10 +2217,6 @@ function renderLocalDnsSettings() {
     select.appendChild(option);
   }
   select.value = current;
-  const ecsInput = $("localDnsEcsSubnet");
-  if (ecsInput) {
-    ecsInput.value = (state.groups.dns || {}).local_ecs_subnet || "";
-  }
   const rows = $("dnsDelayRows");
   rows.innerHTML = "";
   const choices = Object.entries(dnsChoices());
@@ -3143,8 +3125,6 @@ function syncNodeSettingsFromForm() {
   state.groups.dns.local = $("localDnsSelect").value || "alidns";
   state.groups.dns.local_custom_server = ($("customDnsServer").value || "223.5.5.5").trim();
   state.groups.dns.local_custom_port = Number($("customDnsPort").value) || 53;
-  const ecsInput = $("localDnsEcsSubnet");
-  state.groups.dns.local_ecs_subnet = ecsInput ? (ecsInput.value || "").trim() : "";
   state.groups.fakeip = state.groups.fakeip || {};
   state.groups.fakeip.inet4_range = $("fakeipV4").value.trim();
   state.groups.fakeip.inet6_range = $("fakeipV6").value.trim();
@@ -3204,11 +3184,6 @@ $("customDnsServer").addEventListener("input", syncNodeSettingsChanged);
 $("customDnsServer").addEventListener("change", syncNodeSettingsChanged);
 $("customDnsPort").addEventListener("input", syncNodeSettingsChanged);
 $("customDnsPort").addEventListener("change", syncNodeSettingsChanged);
-const localDnsEcsSubnetEl = $("localDnsEcsSubnet");
-if (localDnsEcsSubnetEl) {
-  localDnsEcsSubnetEl.addEventListener("input", syncNodeSettingsChanged);
-  localDnsEcsSubnetEl.addEventListener("change", syncNodeSettingsChanged);
-}
 $("refreshDnsDelayBtn").addEventListener("click", refreshDnsDelays);
 $("proxyDefault").addEventListener("change", () => {
   syncNodeSettingsChanged();

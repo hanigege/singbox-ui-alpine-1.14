@@ -67,16 +67,6 @@ LOCAL_DNS_SERVER = {
     "server": "119.29.29.29",
     "server_port": 53,
     # 国内直连域名只会路由到一个 local-dns；当前 sing-box 没有 DNS 并发/备用组，UI 只能明确选择单个上游。
-    # ECS (EDNS Client Subnet)：不能用在本结构上。sing-box 的 DNS server 不接受 client_subnet
-    # （1.13/1.14 都会 FATAL unknown field），只能挂在 DNS rule 的 action 上，
-    # 由 apply_ecs_to_china_dns_rules() 注入到国内域名规则里。
-}
-# DNS 规则里代表“国内直连、走真实 DNS”的规则集，ECS 注入与回读都以这份清单为准。
-CHINA_DNS_RULE_SETS = {
-    "geosite-cn",
-    "geosite-geolocation-cn",
-    "geosite-icloud@cn",
-    "geosite-apple@cn",
 }
 DDNS_REMOTE_DNS_SERVER = {
     "tag": "ddns-remote-dns",
@@ -860,7 +850,6 @@ def extract_initial_manager_data(config):
                 "inet6_range": server.get("inet6_range", "2001:2::/64"),
             }
             break
-    local_ecs_subnet = ""
     for server in config.get("dns", {}).get("servers", []) or []:
         if isinstance(server, dict) and server.get("tag") == "local-dns":
             server_addr = str(server.get("server", "")).strip()
@@ -868,16 +857,6 @@ def extract_initial_manager_data(config):
                 local_dns_choice = LOCAL_DNS_BY_SERVER[server_addr]
             else:
                 local_dns_choice = "custom_dns"
-            break
-    # ECS 只存在于 DNS rule 的 action 上；旧的错误写法写进 DNS server 的 client_subnet 会被
-    # sing-box 拒绝（FATAL unknown field），这里一概不读，避免把坏值回填进 UI 再次渲染失败。
-    for rule in config.get("dns", {}).get("rules", []) or []:
-        if not isinstance(rule, dict) or not rule.get("client_subnet"):
-            continue
-        rule_set = rule.get("rule_set")
-        rule_set_tags = [rule_set] if isinstance(rule_set, str) else (rule_set or [])
-        if any(tag in CHINA_DNS_RULE_SETS for tag in rule_set_tags):
-            local_ecs_subnet = str(rule.get("client_subnet") or "").strip()
             break
     base = json.loads(json.dumps(config))
     base["outbounds"] = []
@@ -905,7 +884,7 @@ def extract_initial_manager_data(config):
             },
             **fakeip,
         },
-        "dns": {"local": local_dns_choice, "local_custom_server": "223.5.5.5", "local_custom_port": 53, "local_ecs_subnet": local_ecs_subnet},
+        "dns": {"local": local_dns_choice, "local_custom_server": "223.5.5.5", "local_custom_port": 53},
         "ddns": {"dns": "local"},
     }
     return base, normalize_nodes(nodes), groups
@@ -967,7 +946,9 @@ def load_groups():
         groups["dns"]["local"] = DEFAULT_LOCAL_DNS_CHOICE
     groups["dns"].setdefault("local_custom_server", "223.5.5.5")
     groups["dns"].setdefault("local_custom_port", 53)
-    groups["dns"]["local_ecs_subnet"] = normalize_ecs_subnet(groups["dns"].get("local_ecs_subnet", ""))
+    # ECS 功能已移除（家宽直连国内 DNS 时上游本就按出口 IP 就近解析，填错网段反而把 CDN 打到境外）。
+    # 老部署的 groups.json 可能残留该键，读入时直接剔除，避免配置里留着一个没人管的死字段。
+    groups["dns"].pop("local_ecs_subnet", None)
     if groups["ddns"].get("dns") not in ("local", "remote"):
         groups["ddns"]["dns"] = "local"
     groups["telegram"].setdefault("capture_ips", True)
@@ -1001,7 +982,6 @@ def render_config(nodes=None, groups=None, rule_dir=RULE_DIR, normalized_lists=N
     apply_portable_listeners(config)
     apply_cache_file_settings(config)
     apply_local_dns_settings(config, groups)
-    apply_ecs_to_china_dns_rules(config, groups)
     apply_ddns_remote_dns_settings(config)
     apply_fakeip_settings(config, groups)
     apply_blacklist_dns_reject(config)
@@ -1531,21 +1511,6 @@ def apply_fakeip_settings(config, groups):
     target["inet6_range"] = inet6_range
 
 
-def normalize_ecs_subnet(value):
-    """校验 ECS client_subnet：必须是合法的 IPv4/IPv6 网段，空字符串表示不启用。"""
-    text = str(value or "").strip()
-    if not text:
-        return ""
-    try:
-        network = ipaddress.ip_network(text, strict=False)
-    except ValueError as exc:
-        raise ValueError(f"Invalid ECS client_subnet: {text}") from exc
-    # sing-box 接受无前缀的 IP（自动 /32 或 /128），但这里统一要求网段，避免用户误填单 IP。
-    if network.prefixlen == network.max_prefixlen:
-        raise ValueError(f"ECS client_subnet must be a network CIDR, not a single IP: {text}")
-    return str(network)
-
-
 def local_dns_server_config(choice, groups_dns=None):
     if choice == "custom_dns" and groups_dns:
         server = json.loads(json.dumps(LOCAL_DNS_SERVER))
@@ -1556,9 +1521,6 @@ def local_dns_server_config(choice, groups_dns=None):
         server = json.loads(json.dumps(LOCAL_DNS_SERVER))
         server["server"] = item["server"]
         server["server_port"] = item["server_port"]
-    # sing-box 的 DNS server 不接受 client_subnet（1.13/1.14 均 FATAL unknown field），
-    # 写进去会让 staged_check 拒绝保存。ECS 统一由 apply_ecs_to_china_dns_rules()
-    # 注入国内域名 DNS 规则的 route action。
     return server
 
 
@@ -1578,32 +1540,6 @@ def apply_local_dns_settings(config, groups):
     target.clear()
     # local-dns 是国内直连域名的唯一上游，保存时必须按 UI 选择精确写入，不能伪装成并发或备用。
     target.update(desired)
-
-
-def apply_ecs_to_china_dns_rules(config, groups):
-    """给国内域名 DNS 规则的 route action 注入 client_subnet（ECS）。
-
-    sing-box 只接受 DNS rule action 上的 client_subnet，DNS server 上放会 FATAL
-    unknown field（1.13/1.14 一致）。因此把 ECS 附加到国内域名的 route action 里，
-    让权威 DNS 按该网段返回就近 CDN IP；国外域名走 fakeip/remote-dns 不受影响。
-
-    用户通过 UI 维护页的 groups["dns"]["local_ecs_subnet"] 配置网段，
-    空字符串表示不启用 ECS（上游 DNS 按出口 IP 自动判断）。
-    """
-    ecs = normalize_ecs_subnet(groups.get("dns", {}).get("local_ecs_subnet", ""))
-    dns_rules = config.setdefault("dns", {}).setdefault("rules", [])
-    for rule in dns_rules:
-        if not isinstance(rule, dict) or rule.get("action") != "route":
-            continue
-        rule_set = rule.get("rule_set")
-        rule_set_tags = [rule_set] if isinstance(rule_set, str) else (rule_set or [])
-        if not any(tag in CHINA_DNS_RULE_SETS for tag in rule_set_tags):
-            continue
-        # 幂等：用户清空 ECS 时也要摘掉历史注入值，避免 base.json 里残留一个旧网段。
-        if ecs:
-            rule["client_subnet"] = ecs
-        else:
-            rule.pop("client_subnet", None)
 
 
 def apply_ddns_remote_dns_settings(config):
@@ -3666,7 +3602,6 @@ def normalize_payload_groups(raw_groups, nodes=None):
                 groups["dns"]["local_custom_server"] = custom_server
             custom_port = int(dns.get("local_custom_port", 53))
             groups["dns"]["local_custom_port"] = custom_port
-            groups["dns"]["local_ecs_subnet"] = normalize_ecs_subnet(dns.get("local_ecs_subnet", groups["dns"].get("local_ecs_subnet", "")))
         ddns = raw_groups.get("ddns")
         if isinstance(ddns, dict):
             mode = str(ddns.get("dns", groups["ddns"].get("dns", "local"))).strip()
